@@ -1,13 +1,13 @@
-# 爸爸来啦 - Cloudflare Workers代理工具
+# 爸爸来啦 - Cloudflare Workers应用
 
-这是一个基于Cloudflare Workers的代理工具，提供稳定、高效的网络服务。本项目基于原始代码进行了全面优化，修复了语法错误，改进了代码结构。
+这是一个基于Cloudflare Workers的应用，提供稳定、高效的网络通信服务。本项目基于原始代码进行了全面优化，修复了语法错误，改进了代码结构。
 
 ## 功能概述
 
-爸爸来啦是一个基于Cloudflare Workers的代理工具，支持以下功能：
+爸爸来啦是一个基于Cloudflare Workers的网络应用，支持以下功能：
 - WebSocket连接处理
 - UUID认证系统
-- 多种代理协议支持（HTTP/SOCKS5）
+- 多种网络协议支持
 - 动态配置管理
 - 订阅功能支持
 - 全面的错误处理机制
@@ -54,34 +54,55 @@
 
 ## 使用方法
 
-### 配置环境变量
+### 环境变量配置
 
-该项目支持以下环境变量配置：
+#### 基础配置
+- `UUID`：认证标识符
+- `KEY`：加密密钥
+- `SERVER_URL`：服务URL
 
-- `UUID`/`uuid`/`PASSWORD`/`pswd`：用户认证标识
-- `KEY`/`TOKEN`：用于生成动态UUID的密钥
-- `TIME`：动态UUID的有效期（秒）
-- `UPTIME`：动态UUID的更新时间（秒）
-- `PROXYIP`/`proxyip`：代理IP地址
-- `HTTP`/`SOCKS5`：HTTP或SOCKS5代理地址
-- `GO2SOCKS5`：备用SOCKS5地址
-- `CFPORTS`：HTTPS端口配置
-- `BAN`：禁止访问的主机
-- `ADD`/`ADDAPI`/`ADDNOTLS`/`ADDNOTLSAPI`/`ADDCSV`：各种地址配置
-- `DLS`：下载配置
-- `CSVREMARK`：CSV备注索引
-- `TGTOKEN`：Telegram Bot Token
-- `TGID`：Telegram Chat ID
-- `SUBNAME`：订阅文件名
-- `SUBEMOJI`/`EMOJI`：订阅表情
-- `LINK`：链接配置
-- `SUBAPI`：订阅转换API
-- `SUBCONFIG`：订阅配置URL
-- `URL302`：302重定向URL
-- `URL`：代理URL
-- `SCV`：安全连接验证设置
+#### 推荐配置（详细说明）
+- `UUID`：用于身份验证的唯一标识符，建议使用强随机字符串，确保只有授权用户可以访问
+- `KEY`：数据传输加密密钥，用于保护数据安全和完整性
+- `SERVER_URL`：服务访问地址，设置后客户端可通过该地址连接
+- `TIMEOUT`：请求超时时间，默认为30秒，可根据网络情况调整
+- `MAX_CONNECTIONS`：最大并发连接数限制，建议设置为合理值避免资源耗尽
+- `LOG_LEVEL`：日志级别控制，可选值：ERROR、WARNING、INFO、DEBUG
+- `CACHE_ENABLED`：是否启用缓存功能，可提升性能
+- `COMPRESSION`：是否启用数据压缩，可减少传输量
+
+#### 完整配置
+完整配置包含更多高级选项，可根据实际需求进行配置。详细选项请参考DEPLOYMENT-CHECKLIST.md文档。
 
 ### 部署步骤
+
+### Cloudflare Pages 部署
+
+#### 方法一：GitHub 集成部署
+1. 确保代码已推送到GitHub仓库
+2. 登录Cloudflare控制台
+3. 进入"Pages"部分
+4. 点击"创建项目" → "连接到Git"
+5. 选择您的GitHub仓库（爸爸来啦）
+6. 配置部署设置：
+   - 框架预设：无
+   - 构建命令：（留空）
+   - 构建输出目录：（留空）
+   - 根目录：（留空）
+7. 添加环境变量（根据推荐配置方案）
+8. 点击"保存并部署"
+
+#### 方法二：直接上传部署
+1. 登录Cloudflare控制台
+2. 进入"Pages"部分
+3. 点击"创建项目" → "直接上传"
+4. 将项目文件打包为ZIP格式
+5. 上传ZIP文件
+6. 配置项目名称为"爸爸来啦"
+7. 添加环境变量（根据推荐配置方案）
+8. 点击"部署站点"
+
+### Cloudflare Workers 部署（传统方式）
 
 #### 1. 准备工作
 
@@ -98,7 +119,7 @@ wrangler login
 编辑 `wrangler.toml` 文件，根据需要修改项目名称和兼容性日期：
 
 ```toml
-name = "edgetunnel-reoptimized"
+name = "爸爸来啦"
 main = "_worker.js"
 compatibility_date = "2025-09-07"
 ```
@@ -129,13 +150,12 @@ wrangler secret put KEY
 
 ```bash
 # 进入项目目录
-cd c:\Users\52321\Desktop\sss\edgetunnel-reoptimized
+cd c:\Users\52321\Desktop\sss\爸爸来啦
 
 # 初始化Git仓库
 git init
 
-# 创建.gitignore文件
-echo "node_modules/\n.env\n*.log\n.DS_Store\n*.swp" > .gitignore
+# 项目已包含.gitignore文件
 
 # 添加文件
 git add .
@@ -148,6 +168,11 @@ git commit -m "初始化优化版本"
 
 ```bash
 # 添加远程仓库
+git remote add origin https://github.com/你的用户名/爸爸来啦.git
+
+# 推送到GitHub
+git push -u origin main
+```
 git remote add origin https://github.com/你的用户名/edgetunnel-reoptimized.git
 
 # 推送到GitHub
