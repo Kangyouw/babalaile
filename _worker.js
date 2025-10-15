@@ -403,10 +403,10 @@ async function generateHtml(config) {
         </div>
         
         <div class="tab-container">
-          <button class="tab active" onclick="switchTab('config')">基础配置</button>
-          <button class="tab" onclick="switchTab('advanced')">高级配置</button>
-          <button class="tab" onclick="switchTab('speedtest')">测速优选</button>
-          <button class="tab" onclick="switchTab('export')">环境变量导出</button>
+          <button class="tab active" onclick="switchTab('config', event)">基础配置</button>
+          <button class="tab" onclick="switchTab('advanced', event)">高级配置</button>
+          <button class="tab" onclick="switchTab('speedtest', event)">测速优选</button>
+          <button class="tab" onclick="switchTab('export', event)">环境变量导出</button>
         </div>
         
         <div id="config" class="tab-content active">
@@ -486,7 +486,7 @@ async function generateHtml(config) {
       
       <script>
         // 切换标签页
-        function switchTab(tabId) {
+        function switchTab(tabId, event) {
           // 隐藏所有内容
           document.querySelectorAll('.tab-content').forEach(content => {
             content.classList.remove('active');
@@ -499,7 +499,9 @@ async function generateHtml(config) {
           
           // 激活选中的标签和内容
           document.getElementById(tabId).classList.add('active');
-          event.target.classList.add('active');
+          if (event && event.target) {
+            event.target.classList.add('active');
+          }
           
           // 如果切换到导出标签，更新环境变量
           if (tabId === 'export') {
