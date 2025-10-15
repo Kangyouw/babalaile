@@ -21,23 +21,40 @@
 
 ### 环境变量配置方案
 
-#### 基础配置
-- `UUID`: 认证标识符
-- `KEY`: 加密密钥
-- `SERVER_URL`: 服务URL
+#### 基础配置（必要配置）
 
-#### 推荐配置（详细说明）
-- `UUID`: 用于身份验证的唯一标识符，建议使用强随机字符串
-- `KEY`: 数据传输加密密钥，增强数据安全性
-- `SERVER_URL`: 服务访问地址，设置后客户端可通过该地址连接
-- `TIMEOUT`: 请求超时时间，默认为30秒，可根据网络情况调整
-- `MAX_CONNECTIONS`: 最大并发连接数限制，建议设置为合理值避免资源耗尽
-- `LOG_LEVEL`: 日志级别控制，可选值：ERROR、WARNING、INFO、DEBUG
-- `CACHE_ENABLED`: 是否启用缓存功能，可提升性能
-- `COMPRESSION`: 是否启用数据压缩，可减少传输量
+基础配置包含系统运行所必需的环境变量，建议以下配置：
 
-#### 完整配置
-包含所有可用的环境变量，根据实际需求进行配置
+- `UUID`：`8b3e2f7d-4c1a-4e9f-9a8b-7c6d5e4f3a2b`（示例UUID，使用强随机字符串）
+- `KEY`：`your_secure_encryption_key_12345`（示例密钥，建议使用复杂字符串）
+
+> 注意：SERVER_URL不是必须配置项，部署完成后系统会自动使用Cloudflare提供的域名。
+
+#### 推荐配置（网络优化）
+
+在基础配置的基础上，增加以下网络优化相关的环境变量：
+
+- （包含基础配置的2个变量）
+- `TIMEOUT`：`30000`（请求超时时间，单位毫秒，默认30秒）
+- `MAX_CONNECTIONS`：`100`（最大并发连接数限制）
+- `CACHE_ENABLED`：`true`（启用缓存功能，提升性能）
+- `COMPRESSION`：`true`（启用数据压缩，减少传输量）
+- `LOG_LEVEL`：`WARNING`（日志级别，可选值：ERROR、WARNING、INFO、DEBUG）
+
+#### 完整配置（所有可用变量）
+
+完整配置包含所有可用的环境变量及其示例值：
+
+- （包含基础配置和推荐配置的7个变量）
+- `SERVER_URL`：`https://your-project.pages.dev`（可选配置，系统默认使用Cloudflare提供的域名）
+- `TIME`：`3600`（动态标识有效期，单位秒）
+- `UPTIME`：`1800`（动态标识更新时间，单位秒）
+- `BAN`：`example.com,test.org`（禁止访问的主机列表，逗号分隔）
+- `SUBNAME`：`爸爸来啦配置`（订阅文件名）
+- `SUBEMOJI`：`🚀`（订阅表情）
+- `LINK`：`https://example.com/profile`（链接配置）
+- `SUBCONFIG`：`https://your-config.example.com`（配置URL）
+- `URL302`：`https://redirect.example.com`（302重定向URL）
 
 ### 部署步骤
 
