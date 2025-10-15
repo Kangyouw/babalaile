@@ -1,4 +1,4 @@
-name = "爸爸来啦"
+name = "bbll"
 main = "_worker.js"
 compatibility_date = "2025-09-07"
 keep_vars = true

@@ -1,5 +1,5 @@
-// EdgeTunnel - 优化版本
-// 基于之前错误经验的改进实现
+// 爸爸来啦 - 优化版本
+// 基于EdgeTunnel的改进实现
 
 import { connect } from 'cloudflare:sockets';
 
@@ -183,22 +183,429 @@ async function proxyUrl(targetUrl, originalUrl) {
 }
 
 /**
+ * 测速函数 - 测量给定地址的响应时间
+ * @param {string} address - 要测试的地址
+ * @returns {Promise<{address: string, latency: number, success: boolean}>} 测速结果
+ */
+async function testLatency(address) {
+  try {
+    const startTime = Date.now();
+    const response = await fetch(`https://${address}/cdn-cgi/trace`, {
+      method: 'GET',
+      headers: {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+      },
+      signal: AbortSignal.timeout(3000) // 3秒超时
+    });
+    
+    if (response.ok) {
+      const latency = Date.now() - startTime;
+      return { address, latency, success: true };
+    }
+    
+    return { address, latency: 9999, success: false };
+  } catch (error) {
+    console.error(`测速失败 ${address}:`, error);
+    return { address, latency: 9999, success: false };
+  }
+}
+
+/**
+ * 批量测速并排序
+ * @param {string[]} addresses - 地址数组
+ * @returns {Promise<string[]>} 排序后的地址数组
+ */
+async function testAndSortAddresses(addresses) {
+  try {
+    // 并发测速
+    const promises = addresses.map(address => testLatency(address));
+    const results = await Promise.all(promises);
+    
+    // 过滤成功的结果并按延迟排序
+    const sorted = results
+      .filter(result => result.success)
+      .sort((a, b) => a.latency - b.latency)
+      .map(result => result.address);
+    
+    // 添加未成功的地址到末尾
+    const failed = results
+      .filter(result => !result.success)
+      .map(result => result.address);
+    
+    return [...sorted, ...failed];
+  } catch (error) {
+    console.error('批量测速错误:', error);
+    return addresses; // 出错时返回原始数组
+  }
+}
+
+/**
  * 生成HTML页面
+ * @param {object} config - 当前配置对象
  * @returns {Promise<string>} HTML内容
  */
-async function generateHtml() {
-  // 返回简化的HTML页面内容
+async function generateHtml(config) {
+  // 生成可视化配置页面
   return `
     <!DOCTYPE html>
     <html lang="zh-CN">
     <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>EdgeTunnel</title>
+      <title>爸爸来啦 - 配置中心</title>
+      <style>
+        body {
+          font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          max-width: 800px;
+          margin: 0 auto;
+          padding: 20px;
+          background-color: #f5f5f5;
+          color: #333;
+        }
+        h1 {
+          color: #2c3e50;
+          text-align: center;
+          margin-bottom: 30px;
+        }
+        .container {
+          background-color: white;
+          border-radius: 8px;
+          padding: 20px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .status {
+          background-color: #e8f5e9;
+          padding: 15px;
+          border-radius: 5px;
+          margin-bottom: 20px;
+          text-align: center;
+          color: #2e7d32;
+        }
+        .tab-container {
+          display: flex;
+          margin-bottom: 20px;
+          border-bottom: 1px solid #e0e0e0;
+        }
+        .tab {
+          padding: 10px 20px;
+          cursor: pointer;
+          border: none;
+          background: none;
+          font-size: 16px;
+          color: #757575;
+          border-bottom: 2px solid transparent;
+          transition: all 0.3s;
+        }
+        .tab.active {
+          color: #2196f3;
+          border-bottom-color: #2196f3;
+        }
+        .tab-content {
+          display: none;
+        }
+        .tab-content.active {
+          display: block;
+        }
+        .form-group {
+          margin-bottom: 20px;
+        }
+        label {
+          display: block;
+          margin-bottom: 5px;
+          font-weight: 500;
+          color: #555;
+        }
+        input[type="text"], input[type="number"], input[type="checkbox"], select {
+          width: 100%;
+          padding: 10px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          font-size: 14px;
+          transition: border-color 0.3s;
+        }
+        input[type="checkbox"] {
+          width: auto;
+          margin-right: 5px;
+        }
+        .checkbox-group {
+          display: flex;
+          align-items: center;
+        }
+        button {
+          background-color: #2196f3;
+          color: white;
+          border: none;
+          padding: 12px 24px;
+          border-radius: 4px;
+          font-size: 16px;
+          cursor: pointer;
+          transition: background-color 0.3s;
+        }
+        button:hover {
+          background-color: #1976d2;
+        }
+        button[type="button"] {
+          background-color: #757575;
+        }
+        button[type="button"]:hover {
+          background-color: #616161;
+        }
+        .buttons-container {
+          display: flex;
+          gap: 10px;
+          margin-top: 20px;
+        }
+        .code-block {
+          background-color: #f5f5f5;
+          padding: 15px;
+          border-radius: 4px;
+          overflow-x: auto;
+          font-family: 'Courier New', monospace;
+          font-size: 14px;
+          margin-top: 10px;
+        }
+        .note {
+          background-color: #fff8e1;
+          padding: 10px;
+          border-radius: 4px;
+          margin-top: 5px;
+          font-size: 14px;
+          color: #ff6f00;
+        }
+        .test-result {
+          margin-top: 20px;
+          max-height: 300px;
+          overflow-y: auto;
+          border: 1px solid #e0e0e0;
+          border-radius: 4px;
+          padding: 10px;
+        }
+        .result-item {
+          padding: 8px;
+          border-bottom: 1px solid #f0f0f0;
+        }
+        .result-item:last-child {
+          border-bottom: none;
+        }
+        .result-item.success {
+          background-color: #e8f5e9;
+        }
+        .result-item.failed {
+          background-color: #ffebee;
+        }
+      </style>
     </head>
     <body>
-      <h1>EdgeTunnel</h1>
-      <p>优化版本运行中...</p>
+      <h1>爸爸来啦 - 配置中心</h1>
+      <div class="container">
+        <div class="status">
+          服务运行正常 - 优化版本
+        </div>
+        
+        <div class="tab-container">
+          <button class="tab active" onclick="switchTab('config')">基础配置</button>
+          <button class="tab" onclick="switchTab('advanced')">高级配置</button>
+          <button class="tab" onclick="switchTab('speedtest')">测速优选</button>
+          <button class="tab" onclick="switchTab('export')">环境变量导出</button>
+        </div>
+        
+        <div id="config" class="tab-content active">
+          <h2>基础配置参数</h2>
+          <div class="form-group">
+            <label for="uuid">UUID (用户标识)</label>
+            <input type="text" id="uuid" placeholder="请输入UUID或使用动态密钥" value="${config.USER_ID || ''}">
+            <div class="note">留空将生成随机UUID</div>
+          </div>
+          
+          <div class="form-group">
+            <label for="proxyIp">代理IP</label>
+            <input type="text" id="proxyIp" placeholder="多个IP用逗号分隔" value="${config.PROXY_IP ? config.PROXY_IPS.join(',') : ''}">
+          </div>
+          
+          <div class="form-group">
+            <label for="socks5">Socks5/HTTP地址</label>
+            <input type="text" id="socks5" placeholder="格式: IP:端口" value="${config.SOCKS5_ADDRESS || ''}">
+          </div>
+          
+          <div class="form-group">
+            <label for="validTime">有效期 (秒)</label>
+            <input type="number" id="validTime" value="${config.VALID_TIME || 86400}">
+            <div class="note">默认24小时 (86400秒)</div>
+          </div>
+          
+          <div class="form-group">
+            <label class="checkbox-group">
+              <input type="checkbox" id="enableHttp" ${config.ENABLE_HTTP ? 'checked' : ''}>
+              启用HTTP代理
+            </label>
+          </div>
+        </div>
+        
+        <div id="advanced" class="tab-content">
+          <h2>高级配置参数</h2>
+          <div class="form-group">
+            <label for="botToken">Telegram Bot Token</label>
+            <input type="text" id="botToken" placeholder="用于通知功能" value="${config.BOT_TOKEN || ''}">
+          </div>
+          
+          <div class="form-group">
+            <label for="chatId">Telegram Chat ID</label>
+            <input type="text" id="chatId" placeholder="接收通知的用户ID" value="${config.CHAT_ID || ''}">
+          </div>
+          
+          <div class="form-group">
+            <label for="subName">订阅文件名</label>
+            <input type="text" id="subName" value="${config.FILE_NAME || 'clash'}">
+          </div>
+          
+          <div class="form-group">
+            <label for="subEmoji">订阅前缀表情</label>
+            <input type="text" id="subEmoji" value="${config.SUB_EMOJI || '🚀'}">
+          </div>
+        </div>
+        
+        <div id="speedtest" class="tab-content">
+          <h2>测速与优选</h2>
+          <div class="form-group">
+            <label for="testAddresses">要测试的地址</label>
+            <input type="text" id="testAddresses" placeholder="多个地址用逗号分隔" value="${config.ADDRESSES_CSV.join(',') || 'example.com,test.com,demo.com'}">
+            <div class="note">输入要测试的域名或IP地址，系统将自动测试并排序</div>
+          </div>
+          
+          <button id="startTest" onclick="startSpeedTest()">开始测速</button>
+          <div id="testResult" class="test-result"></div>
+        </div>
+        
+        <div id="export" class="tab-content">
+          <h2>环境变量配置</h2>
+          <p>根据您的配置自动生成环境变量，可直接复制到Cloudflare Workers或Pages设置中：</p>
+          <div id="envVars" class="code-block"></div>
+          <button onclick="copyEnvVars()">复制环境变量</button>
+        </div>
+      </div>
+      
+      <script>
+        // 切换标签页
+        function switchTab(tabId) {
+          // 隐藏所有内容
+          document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+          });
+          
+          // 移除所有标签的活跃状态
+          document.querySelectorAll('.tab').forEach(tab => {
+            tab.classList.remove('active');
+          });
+          
+          // 激活选中的标签和内容
+          document.getElementById(tabId).classList.add('active');
+          event.target.classList.add('active');
+          
+          // 如果切换到导出标签，更新环境变量
+          if (tabId === 'export') {
+            updateEnvVars();
+          }
+        }
+        
+        // 更新环境变量
+        function updateEnvVars() {
+          const uuid = document.getElementById('uuid').value;
+          const proxyIp = document.getElementById('proxyIp').value;
+          const socks5 = document.getElementById('socks5').value;
+          const validTime = document.getElementById('validTime').value;
+          const enableHttp = document.getElementById('enableHttp').checked;
+          const botToken = document.getElementById('botToken').value;
+          const chatId = document.getElementById('chatId').value;
+          const subName = document.getElementById('subName').value;
+          const subEmoji = document.getElementById('subEmoji').value;
+          
+          let envVars = '';
+          if (uuid) envVars += 'UUID=' + uuid + '\n';
+          if (proxyIp) envVars += 'PROXYIP=' + proxyIp + '\n';
+          if (socks5) envVars += 'SOCKS5=' + socks5 + '\n';
+          if (enableHttp) envVars += 'HTTP=' + socks5 + '\n';
+          envVars += 'TIME=' + validTime + '\n';
+          if (botToken) envVars += 'TGTOKEN=' + botToken + '\n';
+          if (chatId) envVars += 'TGID=' + chatId + '\n';
+          if (subName) envVars += 'SUBNAME=' + subName + '\n';
+          if (subEmoji) envVars += 'SUBEMOJI=' + subEmoji + '\n';
+          
+          document.getElementById('envVars').textContent = envVars;
+        }
+        
+        // 复制环境变量
+        function copyEnvVars() {
+          const envVars = document.getElementById('envVars').textContent;
+          navigator.clipboard.writeText(envVars)
+            .then(() => alert('环境变量已复制到剪贴板'))
+            .catch(err => console.error('复制失败:', err));
+        }
+        
+        // 开始测速
+        async function startSpeedTest() {
+          const addressesInput = document.getElementById('testAddresses').value;
+          const addresses = addressesInput.split(',').map(addr => addr.trim()).filter(Boolean);
+          const resultDiv = document.getElementById('testResult');
+          
+          if (addresses.length === 0) {
+            alert('请输入至少一个要测试的地址');
+            return;
+          }
+          
+          resultDiv.innerHTML = '<p>正在测速，请稍候...</p>';
+          
+          try {
+            // 创建测速API调用
+            const response = await fetch('/api/speedtest', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ addresses })
+            });
+            
+            const results = await response.json();
+            
+            // 显示结果
+            resultDiv.innerHTML = '';
+            if (results.length > 0) {
+              results.forEach(result => {
+                const item = document.createElement('div');
+                item.className = 'result-item ' + (result.success ? 'success' : 'failed');
+                
+                let content = '<strong>' + result.address + '</strong>: ';
+                if (result.success) {
+                  content += '响应时间 ' + result.latency + 'ms';
+                } else {
+                  content += '测速失败';
+                }
+                
+                item.innerHTML = content;
+                resultDiv.appendChild(item);
+              });
+              
+              // 更新环境变量中的ADDCSV
+              const successAddresses = results
+                .filter(result => result.success)
+                .sort((a, b) => a.latency - b.latency)
+                .map(result => result.address);
+              
+              if (successAddresses.length > 0) {
+                document.getElementById('testAddresses').value = successAddresses.join(',');
+                alert('测速完成！已自动排序最优地址');
+              }
+            }
+          } catch (error) {
+            resultDiv.innerHTML = '<p>测速失败，请稍后重试</p>';
+            console.error('测速错误:', error);
+          }
+        }
+        
+        // 页面加载时初始化
+        window.onload = function() {
+          updateEnvVars();
+        };
+      </script>
     </body>
     </html>
   `;
@@ -329,6 +736,39 @@ async function handleRequest(request, env) {
       config.SOCKS5_ADDRESS = config.SOCKS5_ADDRESS.split('//')[1] || config.SOCKS5_ADDRESS;
     }
     
+    // 处理测速API请求
+    if (url.pathname === '/api/speedtest' && request.method === 'POST') {
+      try {
+        const data = await request.json();
+        if (!data.addresses || !Array.isArray(data.addresses)) {
+          return new Response(JSON.stringify({ error: '无效的地址数组' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+        
+        // 批量测速
+        const promises = data.addresses.map(address => testLatency(address));
+        const results = await Promise.all(promises);
+        
+        return new Response(JSON.stringify(results), {
+          headers: { 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('测速API错误:', error);
+        return new Response(JSON.stringify({ error: '测速处理失败' }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      }
+    }
+    
+    // 自动测速并优化ADDCSV参数
+    if (config.ADDRESSES_CSV.length > 0) {
+      // 当ADDCSV包含测速地址时，自动进行测速排序
+      config.ADDRESSES_CSV = await testAndSortAddresses(config.ADDRESSES_CSV);
+    }
+    
     // 加载其他配置参数
     if (env.GO2SOCKS5) config.GO2_SOCKS5S = await formatArray(env.GO2SOCKS5);
     if (env.CFPORTS) config.HTTPS_PORTS = await formatArray(env.CFPORTS);
@@ -381,10 +821,22 @@ async function handleRequest(request, env) {
       if (env.URL302) {
         return Response.redirect(env.URL302, 302);
       } else if (env.URL) {
-        return await proxyUrl(env.URL, url);
+        // 隐藏原始链接，替换为示例文本展示
+        const proxyResponse = await proxyUrl(env.URL, url);
+        // 这里可以添加处理，例如替换响应中的链接为示例文本
+        // 但由于这是代理请求，我们保持原样并在返回时添加安全头
+        const headers = new Headers(proxyResponse.headers);
+        headers.set('X-Content-Type-Options', 'nosniff');
+        headers.set('X-Frame-Options', 'DENY');
+        
+        return new Response(proxyResponse.body, {
+          status: proxyResponse.status,
+          statusText: proxyResponse.statusText,
+          headers
+        });
       } else {
-        // 返回默认HTML页面
-        return new Response(await generateHtml(), {
+        // 返回可视化配置页面
+        return new Response(await generateHtml(config), {
           headers: {
             'Content-Type': 'text/html;charset=utf-8'
           }
