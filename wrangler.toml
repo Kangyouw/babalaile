@@ -1,0 +1,15 @@
+name = "爸爸来啦"
+main = "_worker.js"
+compatibility_date = "2025-09-07"
+keep_vars = true
+
+[[unsafe.bindings]]
+name = "connect"
+type = "function"
+
+# 项目配置说明
+# name: 项目名称
+# main: 主入口文件
+# compatibility_date: Cloudflare Workers兼容性日期
+# keep_vars: 保留环境变量
+# unsafe.bindings: 用于sockets连接功能
