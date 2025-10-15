@@ -485,78 +485,104 @@ async function generateHtml(config) {
       </div>
       
       <script>
-        // 切换标签页
-        function switchTab(tabId, event) {
-          // 隐藏所有内容
-          document.querySelectorAll('.tab-content').forEach(content => {
-            content.classList.remove('active');
-          });
-          
-          // 移除所有标签的活跃状态
-          document.querySelectorAll('.tab').forEach(tab => {
-            tab.classList.remove('active');
-          });
-          
-          // 激活选中的标签和内容
-          document.getElementById(tabId).classList.add('active');
-          if (event && event.target) {
-            event.target.classList.add('active');
-          }
-          
-          // 如果切换到导出标签，更新环境变量
-          if (tabId === 'export') {
-            updateEnvVars();
-          }
-        }
-        
-        // 更新环境变量
-        function updateEnvVars() {
-          const uuid = document.getElementById('uuid').value;
-          const proxyIp = document.getElementById('proxyIp').value;
-          const socks5 = document.getElementById('socks5').value;
-          const validTime = document.getElementById('validTime').value;
-          const enableHttp = document.getElementById('enableHttp').checked;
-          const botToken = document.getElementById('botToken').value;
-          const chatId = document.getElementById('chatId').value;
-          const subName = document.getElementById('subName').value;
-          const subEmoji = document.getElementById('subEmoji').value;
-          
-          let envVars = '';
-          if (uuid) envVars += 'UUID=' + uuid + '\n';
-          if (proxyIp) envVars += 'PROXYIP=' + proxyIp + '\n';
-          if (socks5) envVars += 'SOCKS5=' + socks5 + '\n';
-          if (enableHttp) envVars += 'HTTP=' + socks5 + '\n';
-          envVars += 'TIME=' + validTime + '\n';
-          if (botToken) envVars += 'TGTOKEN=' + botToken + '\n';
-          if (chatId) envVars += 'TGID=' + chatId + '\n';
-          if (subName) envVars += 'SUBNAME=' + subName + '\n';
-          if (subEmoji) envVars += 'SUBEMOJI=' + subEmoji + '\n';
-          
-          document.getElementById('envVars').textContent = envVars;
-        }
-        
-        // 复制环境变量
-        function copyEnvVars() {
-          const envVars = document.getElementById('envVars').textContent;
-          navigator.clipboard.writeText(envVars)
-            .then(() => alert('环境变量已复制到剪贴板'))
-            .catch(err => console.error('复制失败:', err));
-        }
-        
-        // 开始测速
-        async function startSpeedTest() {
-          const addressesInput = document.getElementById('testAddresses').value;
-          const addresses = addressesInput.split(',').map(addr => addr.trim()).filter(Boolean);
-          const resultDiv = document.getElementById('testResult');
-          
-          if (addresses.length === 0) {
-            alert('请输入至少一个要测试的地址');
-            return;
-          }
-          
-          resultDiv.innerHTML = '<p>正在测速，请稍候...</p>';
-          
+        // 确保在全局作用域中定义函数
+        window.switchTab = function(tabId, event) {
           try {
+            // 隐藏所有内容
+            document.querySelectorAll('.tab-content').forEach(content => {
+              content.classList.remove('active');
+            });
+            
+            // 移除所有标签的活跃状态
+            document.querySelectorAll('.tab').forEach(tab => {
+              tab.classList.remove('active');
+            });
+            
+            // 激活选中的标签和内容
+            const tabElement = document.getElementById(tabId);
+            if (tabElement) {
+              tabElement.classList.add('active');
+            }
+            
+            // 安全地处理事件目标
+            if (event && event.target) {
+              event.target.classList.add('active');
+            }
+            
+            // 如果切换到导出标签，更新环境变量
+            if (tabId === 'export') {
+              updateEnvVars();
+            }
+          } catch (err) {
+            console.error('切换标签错误:', err);
+          }
+        };
+        
+        window.updateEnvVars = function() {
+          try {
+            const uuid = document.getElementById('uuid')?.value || '';
+            const proxyIp = document.getElementById('proxyIp')?.value || '';
+            const socks5 = document.getElementById('socks5')?.value || '';
+            const validTime = document.getElementById('validTime')?.value || 86400;
+            const enableHttp = document.getElementById('enableHttp')?.checked || false;
+            const botToken = document.getElementById('botToken')?.value || '';
+            const chatId = document.getElementById('chatId')?.value || '';
+            const subName = document.getElementById('subName')?.value || 'clash';
+            const subEmoji = document.getElementById('subEmoji')?.value || '🚀';
+            
+            let envVars = '';
+            if (uuid) envVars += 'UUID=' + uuid + '\n';
+            if (proxyIp) envVars += 'PROXYIP=' + proxyIp + '\n';
+            if (socks5) envVars += 'SOCKS5=' + socks5 + '\n';
+            if (enableHttp) envVars += 'HTTP=' + socks5 + '\n';
+            envVars += 'TIME=' + validTime + '\n';
+            if (botToken) envVars += 'TGTOKEN=' + botToken + '\n';
+            if (chatId) envVars += 'TGID=' + chatId + '\n';
+            if (subName) envVars += 'SUBNAME=' + subName + '\n';
+            if (subEmoji) envVars += 'SUBEMOJI=' + subEmoji + '\n';
+            
+            const envVarsElement = document.getElementById('envVars');
+            if (envVarsElement) {
+              envVarsElement.textContent = envVars;
+            }
+          } catch (err) {
+            console.error('更新环境变量错误:', err);
+          }
+        };
+        
+        window.copyEnvVars = function() {
+          try {
+            const envVarsElement = document.getElementById('envVars');
+            if (envVarsElement) {
+              const envVars = envVarsElement.textContent;
+              navigator.clipboard.writeText(envVars)
+                .then(() => alert('环境变量已复制到剪贴板'))
+                .catch(err => {
+                  console.error('复制失败:', err);
+                  alert('复制失败，请手动复制');
+                });
+            }
+          } catch (err) {
+            console.error('复制环境变量错误:', err);
+            alert('复制失败，请手动复制');
+          }
+        };
+        
+        window.startSpeedTest = async function() {
+          try {
+            const addressesInput = document.getElementById('testAddresses')?.value || '';
+            const addresses = addressesInput.split(',').map(addr => addr.trim()).filter(Boolean);
+            const resultDiv = document.getElementById('testResult');
+            
+            if (addresses.length === 0) {
+              alert('请输入至少一个要测试的地址');
+              return;
+            }
+            
+            if (resultDiv) {
+              resultDiv.innerHTML = '<p>正在测速，请稍候...</p>';
+            }
+            
             // 创建测速API调用
             const response = await fetch('/api/speedtest', {
               method: 'POST',
@@ -569,43 +595,55 @@ async function generateHtml(config) {
             const results = await response.json();
             
             // 显示结果
-            resultDiv.innerHTML = '';
-            if (results.length > 0) {
-              results.forEach(result => {
-                const item = document.createElement('div');
-                item.className = 'result-item ' + (result.success ? 'success' : 'failed');
+            if (resultDiv) {
+              resultDiv.innerHTML = '';
+              if (results.length > 0) {
+                results.forEach(result => {
+                  const item = document.createElement('div');
+                  item.className = 'result-item ' + (result.success ? 'success' : 'failed');
+                  
+                  let content = '<strong>' + result.address + '</strong>: ';
+                  if (result.success) {
+                    content += '响应时间 ' + result.latency + 'ms';
+                  } else {
+                    content += '测速失败';
+                  }
+                  
+                  item.innerHTML = content;
+                  resultDiv.appendChild(item);
+                });
                 
-                let content = '<strong>' + result.address + '</strong>: ';
-                if (result.success) {
-                  content += '响应时间 ' + result.latency + 'ms';
-                } else {
-                  content += '测速失败';
+                // 更新环境变量中的ADDCSV
+                const successAddresses = results
+                  .filter(result => result.success)
+                  .sort((a, b) => a.latency - b.latency)
+                  .map(result => result.address);
+                
+                if (successAddresses.length > 0) {
+                  const testAddressesElement = document.getElementById('testAddresses');
+                  if (testAddressesElement) {
+                    testAddressesElement.value = successAddresses.join(',');
+                  }
+                  alert('测速完成！已自动排序最优地址');
                 }
-                
-                item.innerHTML = content;
-                resultDiv.appendChild(item);
-              });
-              
-              // 更新环境变量中的ADDCSV
-              const successAddresses = results
-                .filter(result => result.success)
-                .sort((a, b) => a.latency - b.latency)
-                .map(result => result.address);
-              
-              if (successAddresses.length > 0) {
-                document.getElementById('testAddresses').value = successAddresses.join(',');
-                alert('测速完成！已自动排序最优地址');
               }
             }
           } catch (error) {
-            resultDiv.innerHTML = '<p>测速失败，请稍后重试</p>';
             console.error('测速错误:', error);
+            const resultDiv = document.getElementById('testResult');
+            if (resultDiv) {
+              resultDiv.innerHTML = '<p>测速失败，请稍后重试</p>';
+            }
           }
-        }
+        };
         
         // 页面加载时初始化
         window.onload = function() {
-          updateEnvVars();
+          try {
+            window.updateEnvVars();
+          } catch (err) {
+            console.error('初始化错误:', err);
+          }
         };
       </script>
     </body>
